@@ -11,14 +11,26 @@
       theme: { extend: { fontFamily: { sans: ['Inter','sans-serif'] } } }
     }
   </script>
-  <style>
-  /* =============================
-   *  Global & Layout
-   * ============================= */
-  :root {
-    /* 카드/간격을 화면 크기에 따라 자연스럽게 스케일 */
-    --card-size: clamp(44px, 11.5vw, 80px);  /* 최소 44px, 최대 80px */
-    --card-gap:  clamp(4px,  1.2vw, 10px);   /* 카드/그리드 공통 간격 */
+ <style>
+  /* ========= Global ========= */
+  :root{
+    /* 기본값 (데스크톱) */
+    --card-size: 80px;
+    --card-gap: 10px;
+  }
+
+  /* 단계별로 확실히 축소 (fallback for older mobile browsers) */
+  @media (max-width: 1024px){
+    :root{ --card-size: 64px; --card-gap: 8px; }
+  }
+  @media (max-width: 768px){
+    :root{ --card-size: 56px; --card-gap: 6px; }
+  }
+  @media (max-width: 560px){
+    :root{ --card-size: 50px; --card-gap: 5px; }
+  }
+  @media (max-width: 420px){
+    :root{ --card-size: 44px; --card-gap: 4px; }
   }
 
   body {
@@ -31,197 +43,104 @@
     min-height: 100vh;
     padding: 20px;
   }
-
   #game-container {
     width: 100%;
     max-width: 900px;
-    background-color: #ffffff;
+    background: #fff;
     border-radius: 20px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 25px rgba(0,0,0,.1);
     padding: 30px;
     text-align: center;
   }
-
   h1 {
     font-size: 2.5rem;
     font-weight: 700;
     color: #3b82f6;
     margin-bottom: 20px;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+    text-shadow: 1px 1px 2px rgba(0,0,0,.1);
+  }
+  @media (max-width: 480px){
+    h1{ font-size: 1.4rem; margin-bottom: 12px; }
+    #game-container{ padding: 20px; }
   }
 
-  /* =============================
-   *  Periodic Table (8열 고정)
-   * ============================= */
-  #periodic-table {
+  /* ========= Periodic board (8 cols fixed) ========= */
+  #periodic-table{
     display: grid;
-    grid-template-columns: repeat(8, 1fr); /* 게임 로직과 일치하게 8열 고정 */
+    grid-template-columns: repeat(8, 1fr);
     gap: var(--card-gap);
     margin-bottom: 30px;
   }
-
-  .element-slot {
+  .element-slot{
     position: relative;
     width: 100%;
-    padding-bottom: 100%; /* 1:1 정사각형 비율 */
-    background-color: #e2e8f0;
-    border: 2px dashed #94a3b8;
-    border-radius: 8px;
-    color: #718096;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-weight: 600;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: background-color 0.2s ease-in-out,
-                border-color 0.2s ease-in-out,
-                color 0.2s ease-in-out,
-                transform 0.2s ease-in-out;
+    padding-bottom: 100%;
+    background:#e2e8f0;
+    border:2px dashed #94a3b8;
+    border-radius:8px;
+    color:#718096;
+    display:flex;justify-content:center;align-items:center;
+    font-weight:600;font-size:1rem;
+    cursor:pointer;
+    transition: background-color .2s, border-color .2s, color .2s, transform .2s;
+  }
+  .element-slot.filled { background:#dbeafe; border-color:#60a5fa; }
+  .element-slot.correct{ background:#86efac; border-color:#22c55e; color:#166534; }
+  .element-slot.incorrect{ background:#fecaca; border-color:#ef4444; color:#991b1b; animation:shake .3s; }
+  @keyframes shake{ 0%{transform:translateX(0)}25%{transform:translateX(-5px)}50%{transform:translateX(5px)}75%{transform:translateX(-5px)}100%{transform:translateX(0)} }
+
+  /* ========= Cards container ========= */
+  #card-container{
+    display:flex; flex-wrap:wrap; justify-content:center;
+    gap: var(--card-gap);
+    padding-top:20px; border-top:1px solid #cbd5e1;
   }
 
-  .element-slot.filled {
-    background-color: #dbeafe;
-    border-color: #60a5fa;
-  }
-
-  .element-slot.correct {
-    background-color: #86efac;
-    border-color: #22c55e;
-    color: #166534;
-  }
-
-  .element-slot.incorrect {
-    background-color: #fecaca;
-    border-color: #ef4444;
-    color: #991b1b;
-    animation: shake 0.3s;
-  }
-
-  @keyframes shake {
-    0%   { transform: translateX(0) }
-    25%  { transform: translateX(-5px) }
-    50%  { transform: translateX(5px) }
-    75%  { transform: translateX(-5px) }
-    100% { transform: translateX(0) }
-  }
-
-  /* =============================
-   *  Cards Container
-   * ============================= */
-  #card-container {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: var(--card-gap);         /* 컨테이너도 동일 간격 사용 */
-    padding-top: 20px;
-    border-top: 1px solid #cbd5e1;
-  }
-
-  /* =============================
-   *  Element Card (반응형)
-   * ============================= */
-  .element-card {
+  /* ========= Element card (size ties to --card-size) ========= */
+  .element-card{
     width: var(--card-size);
     height: var(--card-size);
-    background-color: #3b82f6;
-    border-radius: 8px;
-    color: #ffffff;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    cursor: grab;
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    touch-action: none; /* 모바일 드래그 제스처 안정화 */
+    background:#3b82f6; color:#fff; border-radius:8px;
+    display:flex; flex-direction:column; justify-content:center; align-items:center;
+    box-shadow:0 4px 6px rgba(0,0,0,.1);
+    cursor:grab; touch-action:none;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .element-card:active{ cursor:grabbing; transform:scale(1.05); box-shadow:0 8px 12px rgba(0,0,0,.2); }
+
+  /* 들어가면 슬롯을 꽉 채움 */
+  .element-slot .element-card{
+    position:absolute; inset:0; width:100%; height:100%;
   }
 
-  .element-card:active {
-    cursor: grabbing;
-    transform: scale(1.05);
-    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
+  /* Font sizes proportional to card-size (works everywhere) */
+  .element-card .symbol{ 
+    font-size: calc(var(--card-size) * 0.42); /* ex: 80px -> 33.6px */
+    font-weight: 800; line-height:1.05;
   }
-
-  /* 슬롯 안에 들어가면 슬롯 크기에 정확히 맞춤 */
-  .element-slot .element-card {
-    position: absolute;
-    inset: 0;           /* top:0; right:0; bottom:0; left:0; 와 동일 */
-    width: 100%;
-    height: 100%;
+  .element-card .name{
+    font-size: calc(var(--card-size) * 0.18); /* ex: 80px -> 14.4px */
+    font-weight: 500; margin-top:2px; line-height:1.1;
   }
+  .element-slot .element-card .symbol{ font-size: calc(var(--card-size) * 0.60); }
+  .element-slot .element-card .name  { font-size: calc(var(--card-size) * 0.26); }
 
-  /* 카드 텍스트: 화면 크기에 맞춰 자동 스케일 */
-  .element-card .symbol {
-    font-size: clamp(0.9rem, 3.8vw, 1.5rem);
-    font-weight: 800;
-    line-height: 1.05;
+  /* ========= Buttons ========= */
+  button{
+    background:#10b981; color:#fff; padding:12px 24px; border-radius:10px;
+    font-size:1.125rem; font-weight:700; cursor:pointer;
+    transition: background-color .3s, transform .1s;
+    box-shadow:0 4px 6px rgba(0,0,0,.1);
   }
+  button:hover{ background:#059669; }
+  button:active{ transform: scale(.98); }
 
-  .element-card .name {
-    font-size: clamp(0.45rem, 1.8vw, 0.6rem);
-    font-weight: 500;
-    margin-top: 2px;
-    line-height: 1.1;
-  }
-
-  /* 슬롯 안 카드의 텍스트는 약간 더 크게, 그러나 과하지 않게 제한 */
-  .element-slot .element-card .symbol {
-    font-size: clamp(1rem, 5.5vw, 2.25rem);
-  }
-
-  .element-slot .element-card .name {
-    font-size: clamp(0.6rem, 2.8vw, 0.875rem);
-  }
-
-  /* =============================
-   *  Buttons
-   * ============================= */
-  button {
-    background-color: #10b981;
-    color: #ffffff;
-    padding: 12px 24px;
-    border-radius: 10px;
-    font-size: 1.125rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: background-color 0.3s ease-in-out,
-                transform 0.1s ease-in-out;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  }
-
-  button:hover {
-    background-color: #059669;
-  }
-
-  button:active {
-    transform: scale(0.98);
-  }
-
-  /* =============================
-   *  Usability
-   * ============================= */
-  .element-card,
-  .element-slot,
-  #card-container,
-  #periodic-table {
-    user-select: none;
-    -webkit-user-select: none;
-  }
-
-  /* =============================
-   *  Small Devices Tweaks
-   * ============================= */
-  @media (max-width: 480px) {
-    h1 { 
-      font-size: 1.4rem; 
-      margin-bottom: 12px; 
-    }
-    #game-container { 
-      padding: 20px; 
-    }
+  /* ========= Usability ========= */
+  .element-card, .element-slot, #card-container, #periodic-table{
+    user-select:none; -webkit-user-select:none;
   }
 </style>
+
 
 </head>
 <body>
