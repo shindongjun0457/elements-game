@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>1번-20번 원소 주기율표 퍼즐 게임</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { fontFamily: { sans: ['Inter','sans-serif'] } } }
+    }
+  </script>
+  <style>
+    body{font-family:'Inter',sans-serif;background:#f0f4f8;color:#1a202c;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px}
+    #game-container{width:100%;max-width:900px;background:#fff;border-radius:20px;box-shadow:0 10px 25px rgba(0,0,0,.1);padding:30px;text-align:center}
+    h1{font-size:2.5rem;font-weight:700;color:#3b82f6;margin-bottom:20px;text-shadow:1px 1px 2px rgba(0,0,0,.1)}
+    #periodic-table{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin-bottom:30px}
+    .element-slot{width:100%;padding-bottom:100%;position:relative;background:#e2e8f0;border-radius:8px;display:flex;justify-content:center;align-items:center;font-weight:600;font-size:1rem;color:#718096;border:2px dashed #94a3b8;transition:all .2s ease-in-out;cursor:pointer}
+    .element-slot.filled{background:#dbeafe;border-color:#60a5fa}
+    .element-slot.correct{background:#86efac;border-color:#22c55e;color:#166534}
+    .element-slot.incorrect{background:#fecaca;border-color:#ef4444;color:#991b1b;animation:shake .3s}
+    @keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-5px)}50%{transform:translateX(5px)}75%{transform:translateX(-5px)}100%{transform:translateX(0)}}
+    #card-container{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;padding-top:20px;border-top:1px solid #cbd5e1}
+    .element-card{width:80px;height:80px;background:#3b82f6;border-radius:8px;color:#fff;display:flex;flex-direction:column;justify-content:center;align-items:center;box-shadow:0 4px 6px rgba(0,0,0,.1);cursor:grab;transition:transform .2s,box-shadow .2s;touch-action:none}
+    .element-slot .element-card{width:100%;height:100%;position:absolute;top:0;left:0}
+    .element-card:active{cursor:grabbing;transform:scale(1.05);box-shadow:0 8px 12px rgba(0,0,0,.2)}
+    .element-card .symbol{font-size:1.5rem;font-weight:800}
+    .element-card .name{font-size:.6rem;font-weight:500;margin-top:2px}
+    .element-slot .element-card .symbol{font-size:2.25rem}
+    .element-slot .element-card .name{font-size:.875rem}
+    button{background:#10b981;color:#fff;padding:12px 24px;border-radius:10px;font-size:1.125rem;font-weight:700;cursor:pointer;transition:background-color .3s,transform .1s;box-shadow:0 4px 6px rgba(0,0,0,.1)}
+    button:hover{background:#059669}
+    button:active{transform:scale(.98)}
+    .element-card,.element-slot,#card-container,#periodic-table{user-select:none;-webkit-user-select:none}
+    @media (max-width:768px){h1{font-size:2rem}}
+  </style>
+</head>
+<body>
+  <div id="game-container" class="space-y-6">
+    <h1>1번부터 20번 원소 주기율표 퍼즐</h1>
+    <div id="message-box" aria-live="polite">카드를 드래그하여 올바른 위치에 놓으세요!</div>
+    <div id="periodic-table"></div>
+    <div id="card-container"></div>
+    <button id="restart-btn" type="button">다시 시작하기</button>
+  </div>
+
+  <script>
+    /* ===== IE/레거시 대응: Element.closest 폴리필 ===== */
+    if (!Element.prototype.closest) {
+      Element.prototype.closest = function (s) {
+        var el = this;
+        while (el && el.nodeType === 1) {
+          if (el.matches && el.matches(s)) return el;
+          el = el.parentElement || el.parentNode;
+        }
+        return null;
+      };
+    }
+
+    /* ===== 데이터 ===== */
+    var elements = [
+      { number:1,  symbol:'H',  name:'수소',     period:1, col:1 },
+      { number:2,  symbol:'He', name:'헬륨',     period:1, col:8 },
+      { number:3,  symbol:'Li', name:'리튬',     period:2, col:1 },
+      { number:4,  symbol:'Be', name:'베릴륨',   period:2, col:2 },
+      { number:5,  symbol:'B',  name:'붕소',     period:2, col:3 },
+      { number:6,  symbol:'C',  name:'탄소',     period:2, col:4 },
+      { number:7,  symbol:'N',  name:'질소',     period:2, col:5 },
+      { number:8,  symbol:'O',  name:'산소',     period:2, col:6 },
+      { number:9,  symbol:'F',  name:'플루오린', period:2, col:7 },
+      { number:10, symbol:'Ne', name:'네온',     period:2, col:8 },
+      { number:11, symbol:'Na', name:'나트륨',   period:3, col:1 },
+      { number:12, symbol:'Mg', name:'마그네슘', period:3, col:2 },
+      { number:13, symbol:'Al', name:'알루미늄', period:3, col:3 },
+      { number:14, symbol:'Si', name:'규소',     period:3, col:4 },
+      { number:15, symbol:'P',  name:'인',       period:3, col:5 },
+      { number:16, symbol:'S',  name:'황',       period:3, col:6 },
+      { number:17, symbol:'Cl', name:'염소',     period:3, col:7 },
+      { number:18, symbol:'Ar', name:'아르곤',   period:3, col:8 },
+      { number:19, symbol:'K',  name:'칼륨',     period:4, col:1 },
+      { number:20, symbol:'Ca', name:'칼슘',     period:4, col:2 }
+    ];
+
+    var periodicTable, cardContainer, messageBox;
+    var draggedCard = null;
+
+    document.addEventListener('DOMContentLoaded', function () {
+      periodicTable = document.getElementById('periodic-table');
+      cardContainer = document.getElementById('card-container');
+      messageBox = document.getElementById('message-box');
+      document.getElementById('restart-btn').addEventListener('click', startGame);
+      startGame();
+    });
+
+    function startGame() {
+      periodicTable.innerHTML = '';
+      cardContainer.innerHTML = '';
+      messageBox.textContent = '카드를 드래그하여 올바른 위치에 놓으세요!';
+
+      var maxRows = 4, maxCols = 8;
+
+      for (var i=1;i<=maxRows;i++){
+        for (var j=1;j<=maxCols;j++){
+          var element = elements.find(function(el){return el.period===i && el.col===j});
+          var slot = document.createElement('div');
+          slot.classList.add('element-slot','relative');
+
+          if (element){
+            slot.dataset.elementNumber = element.number;
+            slot.dataset.correctSymbol = element.symbol;
+
+            var numBadge = document.createElement('span');
+            numBadge.className = 'absolute top-2 left-2 text-sm font-bold';
+            numBadge.textContent = element.number;
+            slot.appendChild(numBadge);
+
+            slot.addEventListener('dragover', function(e){ e.preventDefault(); });
+            slot.addEventListener('drop', handleDrop);
+          } else {
+            slot.classList.add('invisible');
+          }
+          periodicTable.appendChild(slot);
+        }
+      }
+
+      var shuffled = shuffleArray(elements.slice());
+      shuffled.forEach(function(element){
+        var card = document.createElement('div');
+        card.classList.add('element-card');
+        card.draggable = true;
+        card.dataset.symbol = element.symbol;
+        card.dataset.name   = element.name;
+        card.dataset.number = element.number;
+
+        var sym = document.createElement('span');
+        sym.className = 'symbol';
+        sym.textContent = element.symbol;
+        var nm = document.createElement('span');
+        nm.className = 'name';
+        nm.textContent = element.name;
+
+        card.appendChild(sym); card.appendChild(nm);
+
+        card.addEventListener('dragstart', handleDragStart);
+        
+        card.addEventListener('touchstart', onTouchStart, { passive:false });
+
+        cardContainer.appendChild(card);
+      });
+    }
+
+    function shuffleArray(array){
+      for (var i=array.length-1;i>0;i--){
+        var j = Math.floor(Math.random()*(i+1));
+        var tmp = array[i]; array[i]=array[j]; array[j]=tmp;
+      }
+      return array;
+    }
+
+    function handleDragStart(e){
+  draggedCard = e.target;
+  if (e.dataTransfer){
+    e.dataTransfer.setData('text/plain', e.target.dataset.symbol);
+    e.dataTransfer.effectAllowed = 'move';
+  }
+}
+
+ 
+
+    function handleDrop(e){
+      e.preventDefault();
+      if (!draggedCard) return;
+
+      var droppedSlot = e.target.closest('.element-slot');
+      if (!droppedSlot) return;
+
+      var droppedSymbol = draggedCard.dataset.symbol;
+      var correctSymbol = droppedSlot.dataset.correctSymbol;
+      var currentCardInSlot = droppedSlot.querySelector('.element-card');
+
+      
+
+      if (currentCardInSlot){
+        messageBox.textContent = '이미 다른 카드가 있습니다. 다른 곳에 놓아주세요!';
+        setTimeout(function(){ messageBox.textContent = '카드를 드래그하여 올바른 위치에 놓으세요!'; }, 2000);
+        return;
+      }
+
+      if (droppedSymbol === correctSymbol){
+        resetInlineDragStyle(draggedCard);
+        droppedSlot.appendChild(draggedCard);
+        draggedCard.draggable = false;
+        droppedSlot.classList.remove('filled','incorrect');
+        droppedSlot.classList.add('correct');
+
+        var correctCount = periodicTable.querySelectorAll('.element-slot.correct').length;
+        if (correctCount === elements.length){
+          messageBox.textContent = '축하합니다! 모든 원소를 올바르게 배치했습니다!';
+        } else {
+          messageBox.textContent = '맞아요! 다음 원소를 찾아보세요.';
+        }
+      } else {
+        droppedSlot.classList.add('incorrect');
+        messageBox.textContent = '아쉽네요. 다시 시도해 보세요!';
+        setTimeout(function(){
+          droppedSlot.classList.remove('incorrect');
+          messageBox.textContent = '카드를 드래그하여 올바른 위치에 놓으세요!';
+        }, 1000);
+        resetInlineDragStyle(draggedCard);
+        cardContainer.appendChild(draggedCard);
+      }
+      draggedCard = null;
+    }
+
+function onTouchStart(e){
+  e.preventDefault();
+  const card = e.currentTarget;
+  draggedCard = card;
+
+  const touch = e.touches[0];
+  const rect = card.getBoundingClientRect();
+  const offsetX = touch.clientX - rect.left;
+  const offsetY = touch.clientY - rect.top;
+
+  card.style.position = 'fixed';
+  card.style.zIndex = 9999;
+  card.style.left = (touch.clientX - offsetX) + 'px';
+  card.style.top  = (touch.clientY - offsetY) + 'px';
+
+  function onMove(ev){
+    ev.preventDefault();
+    const t = ev.touches[0];
+    card.style.left = (t.clientX - offsetX) + 'px';
+    card.style.top  = (t.clientY - offsetY) + 'px';
+  }
+
+  function onEnd(ev){
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', onEnd);
+
+    const t = ev.changedTouches[0];
+    const elem = document.elementFromPoint(t.clientX, t.clientY);
+    const slot = elem && elem.closest('.element-slot');
+
+    if (slot){
+      const fakeEvent = { preventDefault(){}, target: slot };
+      handleDrop(fakeEvent);
+    } else {
+      resetInlineDragStyle(card);
+      cardContainer.appendChild(card);
+      draggedCard = null;
+    }
+  }
+
+  document.addEventListener('touchmove', onMove, { passive:false });
+  document.addEventListener('touchend', onEnd, { passive:false });
+}
+
+    function resetInlineDragStyle(el){
+      el.style.position=''; el.style.zIndex=''; el.style.left=''; el.style.top='';
+    }
+  </script>
+</body>
+</html>
